@@ -1,0 +1,97 @@
+
+# Catch the Falling Dot Game — Connection Table
+
+## 1. Components
+
+- Arduino Uno × 1
+- SN74HC595N shift register IC × 2
+- 1088AS 8×8 LED matrix × 1
+- Push buttons × 2
+- 1 kΩ resistors × 8 (SEG lines)
+- 2.2 kΩ resistors × 8 (DIG lines)
+- Breadboard and jumper wires
+- USB cable
+
+## 2. Arduino Uno to Shift Registers
+
+| Arduino Pin | Connection | Purpose |
+|---|---|---|
+| D2 | IC1 pin 14 (SER) | Serial data |
+| D3 | Both ICs pin 12 (RCLK) | Latch |
+| D4 | Both ICs pin 11 (SRCLK) | Shift clock |
+| 5V | Both ICs pin 16 (VCC) | Power |
+| GND | Both ICs pin 8 (GND) | Ground |
+| 5V | Both ICs pin 10 (SRCLR) | Disable clear |
+| GND | Both ICs pin 13 (OE) | Enable outputs |
+| IC1 pin 9 (QH') | IC2 pin 14 (SER) | Daisy-chain data |
+
+## 3. IC1 to LED Matrix — DIG Rows
+
+Each DIG line uses a 2.2 kΩ series resistor in the current setup.
+
+| Matrix Signal | Matrix Pin | IC1 Output | IC1 Pin | Resistor |
+|---|---:|---|---:|---|
+| DIG0 | 9 | Q0 | 15 | 2.2 kΩ |
+| DIG1 | 14 | Q1 | 1 | 2.2 kΩ |
+| DIG2 | 8 | Q2 | 2 | 2.2 kΩ |
+| DIG3 | 12 | Q3 | 3 | 2.2 kΩ |
+| DIG4 | 1 | Q4 | 4 | 2.2 kΩ |
+| DIG5 | 7 | Q5 | 5 | 2.2 kΩ |
+| DIG6 | 2 | Q6 | 6 | 2.2 kΩ |
+| DIG7 | 5 | Q7 | 7 | 2.2 kΩ |
+
+## 4. IC2 to LED Matrix — SEG Columns
+
+Each SEG line uses an individual 1 kΩ series resistor.
+
+| Matrix Signal | Matrix Pin | IC2 Output | IC2 Pin | Resistor |
+|---|---:|---|---:|---|
+| SEG A | 3 | Q0 | 15 | 1 kΩ |
+| SEG B | 4 | Q1 | 1 | 1 kΩ |
+| SEG C | 10 | Q2 | 2 | 1 kΩ |
+| SEG D | 6 | Q3 | 3 | 1 kΩ |
+| SEG E | 11 | Q4 | 4 | 1 kΩ |
+| SEG F | 15 | Q5 | 5 | 1 kΩ |
+| SEG G | 16 | Q6 | 6 | 1 kΩ |
+| SEG DP | 13 | Q7 | 7 | 1 kΩ |
+
+Note: The SEG output mapping above assumes the outputs are connected in A, B, C, D, E, F, G, DP order. Verify against the actual wiring.
+
+## 5. Push Buttons
+
+| Button | Arduino Pin | Other Terminal | Code Configuration |
+|---|---|---|---|
+| Left button | D5 | GND | INPUT_PULLUP |
+| Right button | D6 | GND | INPUT_PULLUP |
+
+External resistors are not required for the push buttons when using the Arduino's internal pull-ups.
+
+## 6. Shift Register Power Connections
+
+For both SN74HC595N ICs:
+
+- Pin 16 (VCC) -> Arduino 5V
+- Pin 8 (GND) -> Arduino GND
+- Pin 10 (SRCLR) -> Arduino 5V
+- Pin 13 (OE) -> Arduino GND
+
+Recommended: Place a 0.1 µF ceramic decoupling capacitor between VCC and GND near each IC.
+
+## 7. Game Operation
+
+1. A single LED falls from the top of the matrix.
+2. The two-LED paddle appears at the bottom.
+3. Press the left button to move the paddle left.
+4. Press the right button to move the paddle right.
+5. Catch the falling LED to increase the score.
+6. Successful catches increase the falling speed.
+7. Three missed dots end the game.
+8. Press either button to restart.
+
+## 8. Electrical Safety Notes
+
+- Disconnect USB power before changing wiring.
+- Check the SN74HC595N datasheet for output and total package-current limits.
+- The existing 2.2 kΩ DIG resistors may limit row current enough to make the display dim or unreliable.
+- Series resistors alone do not guarantee safe operation for every LED pattern.
+- Verify the exact 1088AS matrix pinout and polarity before making changes.
