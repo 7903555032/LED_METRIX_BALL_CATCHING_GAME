@@ -1,0 +1,148 @@
+const byte DATA_PIN  = 2;
+const byte LATCH_PIN = 3;
+const byte CLOCK_PIN = 4;
+
+const byte LEFT_BUTTON  = 5;
+const byte RIGHT_BUTTON = 6;
+
+int player = 3;  // Left edge of two-LED paddle: 0 to 6
+int ballX = 3;
+int ballY = 0;
+
+int score = 0;
+byte misses = 0;
+
+unsigned long lastFall = 0;
+unsigned long lastMove = 0;
+
+unsigned int fallInterval = 350;
+const unsigned int moveInterval = 140;
+
+bool gameOver = false;
+
+// Set true if logical column 0 appears on physical column 8.
+const bool REVERSE_COLUMNS = false;
+
+void write595(byte segments, byte rows) {
+  digitalWrite(LATCH_PIN, LOW);
+  shiftOut(DATA_PIN, CLOCK_PIN, MSBFIRST, segments); // IC2
+  shiftOut(DATA_PIN, CLOCK_PIN, MSBFIRST, rows);     // IC1
+  digitalWrite(LATCH_PIN, HIGH);
+}
+
+byte columnBit(int col) {
+  if (REVERSE_COLUMNS) col = 7 - col;
+  return (byte)(1U << col);
+}
+
+void drawFrame() {
+  for (byte row = 0; row < 8; row++) {
+    byte segments = 0;
+
+    // Falling dot
+    if (row == ballY) {
+      segments |= columnBit(ballX);
+    }
+
+    // Two-LED paddle on the bottom row
+    if (row == 7) {
+      segments |= columnBit(player);
+      segments |= columnBit(player + 1);
+    }
+
+    write595(segments, (byte)~(1U << row));
+    delay(2);
+  }
+}
+
+void resetBall() {
+  ballX = random(8);
+  ballY = 0;
+}
+
+void showScoreFeedback() {
+  for (byte i = 0; i < score && i < 8; i++) {
+    write595(0xFF, 0x00);
+    delay(70);
+    write595(0x00, 0xFF);
+    delay(70);
+  }
+}
+
+void setup() {
+  pinMode(DATA_PIN, OUTPUT);
+  pinMode(LATCH_PIN, OUTPUT);
+  pinMode(CLOCK_PIN, OUTPUT);
+
+  pinMode(LEFT_BUTTON, INPUT_PULLUP);
+  pinMode(RIGHT_BUTTON, INPUT_PULLUP);
+
+  randomSeed(analogRead(A0));
+  resetBall();
+}
+
+void loop() {
+  // Game over: all LEDs flash. Press either button to restart.
+  if (gameOver) {
+    for (byte row = 0; row < 8; row++) {
+      write595(0b11111111, (byte)~(1U << row));
+      delay(2);
+    }
+
+    if (digitalRead(LEFT_BUTTON) == LOW ||
+        digitalRead(RIGHT_BUTTON) == LOW) {
+      score = 0;
+      misses = 0;
+      player = 3;
+      fallInterval = 350;
+      gameOver = false;
+      resetBall();
+      lastFall = millis();
+      delay(250);
+    }
+    return;
+  }
+
+  // Move paddle and allow it to reach both edges.
+  if (millis() - lastMove >= moveInterval) {
+    bool leftPressed = digitalRead(LEFT_BUTTON) == LOW;
+    bool rightPressed = digitalRead(RIGHT_BUTTON) == LOW;
+
+    if (leftPressed && !rightPressed && player > 0) {
+      player--;
+      lastMove = millis();
+    } else if (rightPressed && !leftPressed && player < 6) {
+      player++;
+      lastMove = millis();
+    }
+  }
+
+  // Move the ball downward.
+  if (millis() - lastFall >= fallInterval) {
+    lastFall = millis();
+    ballY++;
+
+    if (ballY >= 7) {
+      // Catch if the ball lands on either paddle LED.
+      if (ballX == player || ballX == player + 1) {
+        score++;
+
+        if (fallInterval > 120) {
+          fallInterval -= 15;
+        }
+
+        showScoreFeedback();
+      } else {
+        misses++;
+      }
+
+      if (misses >= 3) {
+        gameOver = true;
+      } else {
+        resetBall();
+      }
+    }
+  }
+
+  drawFrame();
+}
